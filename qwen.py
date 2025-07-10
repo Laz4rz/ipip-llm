@@ -1,10 +1,10 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # Load model and tokenizer
-device = "mps"
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-1.5B", trust_remote_code=True)
+device = "cuda"
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B", trust_remote_code=True)
 print("Tokenizer loaded successfully.")
-model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-1.5B", trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-3B", trust_remote_code=True)
 print("Model loaded successfully.")
 model.to(device)
 
@@ -25,7 +25,15 @@ Use the following format for your response:
 Statement: "I like fishing."
 Your agreement level (1-5): 2
 
-Now, please rate the following statement:
+Statement: "I like drones."
+Your agreement level (1-5): 5
+
+Statement: "I like painting."
+Your agreement level (1-5): 1
+
+Statement: "I jump."
+Your agreement level (1-5): 3
+
 """
 
 question = """
@@ -35,15 +43,37 @@ Your agreement level (1-5):
 
 prompt = intro_text + question
 
-print(prompt)
+prompt2 = """
+You will be shown a series of statements. For each one, respond with your agreement level from 1 to 5 using this scale:
+
+1 = Strongly disagree  
+2 = Disagree  
+3 = Neither agree nor disagree  
+4 = Agree  
+5 = Strongly agree
+
+Format your answers like this:
+Statement: "I like fishing."  
+Your agreement level (1-5): 2
+
+Statement: "I like drones."  
+Your agreement level (1-5): 5
+
+Statement: "I like painting."  
+Your agreement level (1-5): 1
+
+Statement: "I worry about things."  
+Your agreement level (1-5): """
+
+print(prompt2)
 
 # Tokenize
-inputs = tokenizer(prompt, return_tensors="pt").to(device)
+inputs = tokenizer(prompt2, return_tensors="pt").to(device)
 
 # Generate response
 outputs = model.generate(
     **inputs,
-    max_new_tokens=20,
+    max_new_tokens=5,
     temperature=0.7,
     do_sample=True,
     top_p=0.95,
@@ -52,4 +82,5 @@ outputs = model.generate(
 
 # Decode and print
 response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-print(response[len(prompt):].strip())  # remove the prompt prefix
+response_text = response
+print(f"Response: '''\n{response_text}\n'''")
