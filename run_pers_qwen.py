@@ -2,6 +2,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
 import pandas as pd
 from tqdm import tqdm
+from evaluation_utils import AssessLLM
+
 
 # Load model and tokenizer
 device = "cuda"
@@ -71,17 +73,15 @@ for question in tqdm(df['question']):
     print(f"Raw output: {responses_raw[-1]}")
     print("-" * 50)
 
-# inputs = tokenizer(prompt, return_tensors="pt").to(device)
+df["responses"] = responses_raw
+df["numbers_extracted"] = responses
+df["numbers_extracted"].astype(int).apply(lambda x: x if x in [1, 2, 3, 4, 5] else "N/A")
 
-# outputs = model.generate(
-#     **inputs,
-#     max_new_tokens=5,
-#     temperature=0.7,
-#     do_sample=True,
-#     top_p=0.95,
-#     eos_token_id=tokenizer.eos_token_id
-# )
+filename = "qwen_baseline.json"
+df.to_json("data/"+filename)
 
-# response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-# response_text = response
-# print(f"Response: '''\n{response_text}\n'''")
+personality_asses = AssessLLM("data/"+filename).get_scores()
+columns = personality_asses.keys()
+values = personality_asses.values()
+results = pd.DataFrame([values], columns=columns)
+results.to_json("pers_results/"+filename)

@@ -6,7 +6,7 @@ from multiprocessing.pool import ThreadPool
 import time, httpx
 import tiktoken, re
 from openai import OpenAI
-import anthropic
+# import anthropic
 import os
 
 gpt_parameters = {
