@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
+from tqdm import tqdm
 
 # Load model and tokenizer
 device = "cuda"
@@ -36,16 +37,22 @@ Your agreement level (1-5): """
 prompt = intro_text + question
 
 with open("data/ipip_300.json", "r") as f:
+    ipip_questions = json.load(f)['question'].values()
     ipip = json.load(f)
 
-for question in ipip:
-    prompt = intro_text + question
-    print(prompt)
+responses = []
+responses_raw = []
 
-    # Tokenize
+template = """Statement: "{question}"
+Your agreement level (1-5): """
+
+for question in tqdm(ipip):
+    print(f"Question: {question}")
+    print(f"Template: {template.format(question=question)}")
+    prompt = intro_text + template.format(question=question)
+
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
-    # Generate response
     outputs = model.generate(
         **inputs,
         max_new_tokens=5,
@@ -55,10 +62,14 @@ for question in ipip:
         eos_token_id=tokenizer.eos_token_id
     )
 
-    # Decode and print
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     response_text = response[len(prompt):].strip()
-    print(f"Response: '''\n{response_text}\n'''")
+    responses.append(response_text[0:1])
+    responses_raw.append(response_text)
+
+    print(f"Response: {responses[-1]}")
+    print(f"Raw output: {responses_raw[-1]}")
+    print("-" * 50)
 
 # inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
