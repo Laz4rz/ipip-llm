@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
+import pandas as pd
 from tqdm import tqdm
 
 # Load model and tokenizer
@@ -36,9 +37,8 @@ Your agreement level (1-5): """
 
 prompt = intro_text + question
 
-with open("data/ipip_300.json", "r") as f:
-    ipip_questions = json.load(f)['question'].values()
-    ipip = json.load(f)
+f = "data/ipip_300.json"
+df = pd.read_json(f)
 
 responses = []
 responses_raw = []
@@ -46,7 +46,7 @@ responses_raw = []
 template = """Statement: "{question}"
 Your agreement level (1-5): """
 
-for question in tqdm(ipip):
+for question in tqdm(df['question']):
     print(f"Question: {question}")
     print(f"Template: {template.format(question=question)}")
     prompt = intro_text + template.format(question=question)
