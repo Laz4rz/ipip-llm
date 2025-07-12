@@ -7,9 +7,10 @@ from datetime import datetime
 
 # Load model and tokenizer
 device = "cuda"
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B", trust_remote_code=True)
+model_name = "Qwen/Qwen2.5-0.5B"
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 print("Tokenizer loaded successfully.")
-model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-3B", trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
 print("Model loaded successfully.")
 model.to(device)
 
@@ -48,7 +49,7 @@ else:
     personalities_prompt = ""
 
 verbose = False
-for repetition in tqdm(range(20)):
+for repetition in tqdm(range(1)):
     responses = []
     responses_raw = []
     for question in tqdm(df['question']):
@@ -85,7 +86,7 @@ for repetition in tqdm(range(20)):
     df["numbers_extracted"].astype(int).apply(lambda x: x if x in [1, 2, 3, 4, 5] else "N/A")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"qwen_{trait}_{timestamp}.json"
+    filename = f"{model_name.split("/")[1]}_{trait}_{timestamp}.json"
     df.to_json("raw_results/"+filename)
 
     personality_asses = AssessLLM("raw_results/"+filename).get_scores()
@@ -94,4 +95,5 @@ for repetition in tqdm(range(20)):
     results = pd.DataFrame([values], columns=columns)
     results.to_json("pers_results/"+filename)
 
+    print(f"Value counts: {results["numbers_extracted"].value_counts()}, {df["numbers_extracted"].value_counts().sum()}/300")
     print(f"Results saved to raw_results/{filename} and pers_results/{filename}")
