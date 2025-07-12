@@ -3,7 +3,7 @@ import json
 import pandas as pd
 from tqdm import tqdm
 from evaluation_utils import AssessLLM
-
+from datetime import datetime
 
 # Load model and tokenizer
 device = "cuda"
@@ -14,7 +14,7 @@ print("Model loaded successfully.")
 model.to(device)
 
 intro_text = """
-You will be shown a series of statements. For each one, respond with your agreement level from 1 to 5 using this scale:
+You will be given a statement. Respond with your agreement level from 1 to 5 using this scale:
 
 1 = Strongly disagree  
 2 = Disagree  
@@ -22,15 +22,7 @@ You will be shown a series of statements. For each one, respond with your agreem
 4 = Agree  
 5 = Strongly agree
 
-Format your answers like this:
-Statement: "I like fishing."  
-Your agreement level (1-5): 2
-
-Statement: "I like drones."  
-Your agreement level (1-5): 5
-
-Statement: "I like painting."  
-Your agreement level (1-5): 1
+Always reply with a single digit from 1 to 5. In your answer, do not mention digits other than the one you answer with.
 
 """
 
@@ -42,46 +34,64 @@ prompt = intro_text + question
 f = "data/ipip_300.json"
 df = pd.read_json(f)
 
-responses = []
-responses_raw = []
-
 template = """Statement: "{question}"
 Your agreement level (1-5): """
 
-for question in tqdm(df['question']):
-    print(f"Question: {question}")
-    print(f"Template: {template.format(question=question)}")
-    prompt = intro_text + template.format(question=question)
+trait = ""
+if trait != "":
+    qualifierType = "high"
+    qualifier = "extremely"
+    personalities = pd.read_json('data/personalities.json')
+    personalities_subset = personalities[personalities['Domain'] == trait]
+    personalities_prompt = personalities_subset[personalities_subset['QualifierType'] == qualifierType][personalities_subset['Qualifier'] == qualifier].Description.values[0] + "\n"
+else:
+    personalities_prompt = ""
 
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+verbose = False
+for repetition in tqdm(range(20)):
+    responses = []
+    responses_raw = []
+    for question in tqdm(df['question']):
+        if verbose:
+            print(f"Question: {question}")
+            print(f"Template: {template.format(question=question)}")
+            
+        prompt = personalities_prompt + intro_text + template.format(question=question)
 
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=5,
-        temperature=0.7,
-        do_sample=True,
-        top_p=0.95,
-        eos_token_id=tokenizer.eos_token_id
-    )
+        inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    response_text = response[len(prompt):].strip()
-    responses.append(response_text[0:1])
-    responses_raw.append(response_text)
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=5,
+            temperature=0.7,
+            do_sample=True,
+            top_p=0.95,
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.eos_token_id
+        )
 
-    print(f"Response: {responses[-1]}")
-    print(f"Raw output: {responses_raw[-1]}")
-    print("-" * 50)
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        response_text = response[len(prompt):].strip()
+        responses.append(response_text[0:1])
+        responses_raw.append(response_text)
 
-df["responses"] = responses_raw
-df["numbers_extracted"] = responses
-df["numbers_extracted"].astype(int).apply(lambda x: x if x in [1, 2, 3, 4, 5] else "N/A")
+        if verbose == True:
+            print(f"Response: {responses[-1]}")
+            print(f"Raw output: {responses_raw[-1]}")
+            print("-" * 50)
 
-filename = "qwen_baseline.json"
-df.to_json("data/"+filename)
+    df["responses"] = responses_raw
+    df["numbers_extracted"] = responses
+    df["numbers_extracted"].astype(int).apply(lambda x: x if x in [1, 2, 3, 4, 5] else "N/A")
 
-personality_asses = AssessLLM("data/"+filename).get_scores()
-columns = personality_asses.keys()
-values = personality_asses.values()
-results = pd.DataFrame([values], columns=columns)
-results.to_json("pers_results/"+filename)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"qwen_{trait}_{timestamp}.json"
+    df.to_json("raw_results/"+filename)
+
+    personality_asses = AssessLLM("raw_results/"+filename).get_scores()
+    columns = personality_asses.keys()
+    values = personality_asses.values()
+    results = pd.DataFrame([values], columns=columns)
+    results.to_json("pers_results/"+filename)
+
+    print(f"Results saved to raw_results/{filename} and pers_results/{filename}")
