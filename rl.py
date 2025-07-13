@@ -21,18 +21,30 @@ df = pd.read_json(f)
 df = df[df["Neuroticism"] == 1][["question"]]
 df["answer"] = "5"
 
+template = """Statement: "{question}"
+Your agreement level (1-5): """
+
+df["question"] = df["question"].apply(lambda x: template.format(question=x))
+
 from datasets import Dataset
-hf_dataset = Dataset.from_pandas(df, preserve_index=False)
+dataset = Dataset.from_pandas(df, preserve_index=False)
 
 eval_dataset = dataset.select(range(16)) # type: ignore
 train_dataset = dataset.select(range(16, len(dataset))) # type: ignore
-breakpoint()
 
 parser = lambda x: x.strip()[:1]
-system_prompt = f"""Reverse the given text.
+system_prompt = """
+You will be given a statement. Respond with your agreement level from 1 to 5 using this scale:
 
-Respond in the following format:
-{parser.get_format_str()}"""
+1 = Strongly disagree  
+2 = Disagree  
+3 = Neither agree nor disagree  
+4 = Agree  
+5 = Strongly agree
+
+Always reply with a single digit from 1 to 5. In your answer, do not mention digits other than the one you answer with.
+
+"""
 
 def lcs_reward_func(completion, answer, **kwargs) -> float:
     reward = {
@@ -65,7 +77,7 @@ vf_env = vf.SingleTurnEnv(
     parser=parser,
     rubric=rubric
 )
-args = vf.grpo_defaults(run_name='reverse_text_warmup')
+args = vf.grpo_defaults(run_name='naive neuroticism')
 args.num_iterations = 2
 args.per_device_train_batch_size = 12
 args.num_generations = 12
@@ -74,6 +86,7 @@ args.eval_strategy = "steps"
 args.eval_steps = 10
 args.max_steps = 100
 
+print(f"Training with args: {args}")
 model, tokenizer = vf.get_model_and_tokenizer(model_name)
 trainer = vf.GRPOTrainer(
     model=model,

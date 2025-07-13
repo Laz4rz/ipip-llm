@@ -34,6 +34,7 @@ prompt = intro_text + question
 
 f = "data/ipip_300.json"
 df = pd.read_json(f)
+print(df[df["Neuroticism"] == 1])
 
 template = """Statement: "{question}"
 Your agreement level (1-5): """
@@ -95,5 +96,5 @@ for repetition in tqdm(range(1)):
     results = pd.DataFrame([values], columns=columns)
     results.to_json("pers_results/"+filename)
 
-    print(f"Value counts: {results["numbers_extracted"].value_counts()}, {df["numbers_extracted"].value_counts().sum()}/300")
+    print(f"Value counts: {df["numbers_extracted"].value_counts()}, {df["numbers_extracted"].value_counts().sum()}/300")
     print(f"Results saved to raw_results/{filename} and pers_results/{filename}")
