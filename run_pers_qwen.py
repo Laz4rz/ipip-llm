@@ -39,7 +39,13 @@ print(df[df["Neuroticism"] == 1])
 template = """Statement: "{question}"
 Your agreement level (1-5): """
 
-trait = ""
+import os
+if not os.path.exists("raw_results"):
+    os.makedirs("raw_results")
+if not os.path.exists("pers_results"):
+    os.makedirs("pers_results")
+
+trait = "Neuroticism"
 if trait != "":
     qualifierType = "high"
     qualifier = "extremely"
@@ -50,7 +56,7 @@ else:
     personalities_prompt = ""
 
 verbose = False
-for repetition in tqdm(range(1)):
+for repetition in tqdm(range(20)):
     responses = []
     responses_raw = []
     for question in tqdm(df['question']):
@@ -87,7 +93,7 @@ for repetition in tqdm(range(1)):
     df["numbers_extracted"].astype(int).apply(lambda x: x if x in [1, 2, 3, 4, 5] else "N/A")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{model_name.split("/")[1]}_{trait}_{timestamp}.json"
+    filename = f"{model_name.split('/')[1]}_{trait}_{timestamp}.json"
     df.to_json("raw_results/"+filename)
 
     personality_asses = AssessLLM("raw_results/"+filename).get_scores()
@@ -96,5 +102,5 @@ for repetition in tqdm(range(1)):
     results = pd.DataFrame([values], columns=columns)
     results.to_json("pers_results/"+filename)
 
-    print(f"Value counts: {df["numbers_extracted"].value_counts()}, {df["numbers_extracted"].value_counts().sum()}/300")
+    print(f"Value counts: {df['numbers_extracted'].value_counts()}, {df['numbers_extracted'].value_counts().sum()}/300")
     print(f"Results saved to raw_results/{filename} and pers_results/{filename}")
