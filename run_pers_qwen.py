@@ -6,8 +6,9 @@ from evaluation_utils import AssessLLM
 from datetime import datetime
 
 # Load model and tokenizer
-device = "cuda"
-model_name = "Qwen/Qwen2.5-0.5B"
+device = "cuda:1"
+model_name = "outputs/Qwen-1.5B-GRPO/checkpoint-50"
+model_name = "Qwen/Qwen2.5-1.5B"
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 print("Tokenizer loaded successfully.")
 model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
@@ -45,7 +46,7 @@ if not os.path.exists("raw_results"):
 if not os.path.exists("pers_results"):
     os.makedirs("pers_results")
 
-trait = "Neuroticism"
+trait = ""
 if trait != "":
     qualifierType = "high"
     qualifier = "extremely"
@@ -56,7 +57,7 @@ else:
     personalities_prompt = ""
 
 verbose = False
-for repetition in tqdm(range(20)):
+for repetition in tqdm(range(1)):
     responses = []
     responses_raw = []
     for question in tqdm(df['question']):
@@ -70,12 +71,12 @@ for repetition in tqdm(range(20)):
 
         outputs = model.generate(
             **inputs,
-            max_new_tokens=5,
+            max_new_tokens=2,
             temperature=0.7,
             do_sample=True,
             top_p=0.95,
             eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.eos_token_id
+            pad_token_id=tokenizer.eos_token_id,
         )
 
         response = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -100,7 +101,7 @@ for repetition in tqdm(range(20)):
     columns = personality_asses.keys()
     values = personality_asses.values()
     results = pd.DataFrame([values], columns=columns)
-    results.to_json("pers_results/"+filename)
+    # results.to_json("pers_results/"+filename)
 
-    print(f"Value counts: {df['numbers_extracted'].value_counts()}, {df['numbers_extracted'].value_counts().sum()}/300")
-    print(f"Results saved to raw_results/{filename} and pers_results/{filename}")
+    # print(f"Value counts: {df['numbers_extracted'].value_counts()}, {df['numbers_extracted'].value_counts().sum()}/300")
+    # print(f"Results saved to raw_results/{filename} and pers_results/{filename}")
